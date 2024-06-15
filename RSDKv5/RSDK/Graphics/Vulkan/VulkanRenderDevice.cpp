@@ -181,6 +181,7 @@ VkPipelineDynamicStateCreateInfo dynamicState;
 VkDynamicState dynamicStates[1];
 VkPipelineColorBlendAttachmentState colorBlendAttachment;
 VkPipelineColorBlendStateCreateInfo colorBlending;
+VkPipelineMultisampleStateCreateInfo multisampleInfo;
 
 bool RenderDevice::Init()
 {
@@ -739,6 +740,10 @@ bool RenderDevice::InitGraphicsAPI()
     colorBlending.attachmentCount = 1;
     colorBlending.pAttachments    = &colorBlendAttachment;
 
+    multisampleInfo       = {};
+    multisampleInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
     //! CREATE UNIFORM AND SAMPLER LAYOUT
     VkDescriptorSetLayoutBinding samplerLayoutBinding{};
     samplerLayoutBinding.binding            = 0;
@@ -1083,6 +1088,7 @@ bool RenderDevice::InitGraphicsAPI()
     basePipeline.pRasterizationState = &rasterizer;
     basePipeline.pDynamicState       = &dynamicState;
     basePipeline.pColorBlendState    = &colorBlending;
+    basePipeline.pMultisampleState   = &multisampleInfo;
     basePipeline.layout              = pipelineLayout;
     basePipeline.renderPass          = renderPass;
     basePipeline.subpass             = 0;
@@ -1398,6 +1404,7 @@ void RenderDevice::FlipScreen()
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
     if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
         PrintLog(PRINT_NORMAL, "[VK] Failed to begin recording command buffer");
@@ -1867,8 +1874,10 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
         createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         createInfo.codeSize = info.fileSize;
         createInfo.pCode    = reinterpret_cast<const uint32_t *>(fileData);
+        VkResult res = vkCreateShaderModule(device, &createInfo, nullptr, &vertModule);
+        RemoveStorageEntry((void **)&fileData);
 
-        if (vkCreateShaderModule(device, &createInfo, nullptr, &vertModule) != VK_SUCCESS) {
+        if (res != VK_SUCCESS) {
             PrintLog(PRINT_NORMAL, "[VK] Failed to create vertex module for %s", shader->name);
             return;
         }
@@ -1889,8 +1898,10 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
         createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         createInfo.codeSize = info.fileSize;
         createInfo.pCode    = reinterpret_cast<const uint32_t *>(fileData);
+        VkResult res = vkCreateShaderModule(device, &createInfo, nullptr, &fragModule);
+        RemoveStorageEntry((void **)&fileData);
 
-        if (vkCreateShaderModule(device, &createInfo, nullptr, &fragModule) != VK_SUCCESS) {
+        if (res != VK_SUCCESS) {
             PrintLog(PRINT_NORMAL, "[VK] Failed to create fragment module for %s", shader->name);
             return;
         }
